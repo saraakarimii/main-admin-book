@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChromaBook Studio</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,sans-serif;color:#202433;background:#f4f5f8}
+*{box-sizing:border-box}body{margin:0}header{background:#17152e;color:#fff;padding:22px max(22px,calc((100vw - 1240px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+h1{font-size:22px;margin:0}header p{margin:4px 0 0;color:#c9c5dd;font-size:13px}.wrap{max-width:1240px;margin:24px auto;padding:0 18px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat,.panel,.asset,.book{background:#fff;border:1px solid #e3e5eb;border-radius:14px;padding:16px;box-shadow:0 2px 8px #20243308}
+.stat b{font-size:25px;display:block}.stat span,.muted{font-size:12px;color:#707789}
+.columns{display:grid;grid-template-columns:340px 1fr;gap:16px;margin-top:16px}.panel h2{font-size:16px;margin:0 0 14px}
+label{display:block;font-size:12px;font-weight:650;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #d8dbe4;border-radius:8px;background:#fff;font:inherit;font-size:13px}textarea{min-height:65px}
+button{border:0;border-radius:8px;padding:9px 12px;background:#29244b;color:white;font-weight:650;cursor:pointer;font-size:12px}button.secondary{background:#ececf3;color:#29244b}button.danger{background:#9b3434}button:disabled{opacity:.45;cursor:wait}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+.list{display:grid;gap:10px}.asset{display:grid;grid-template-columns:112px 1fr;gap:14px}.asset img{width:112px;height:112px;object-fit:contain;background:#f0f1f5;border-radius:8px}.asset h3,.book h3{margin:0 0 4px;font-size:14px}.tag{display:inline-block;padding:3px 7px;border-radius:30px;background:#eeeef5;color:#44405f;font-size:10px;font-weight:700;margin-right:5px}
+.tag.approved,.tag.ready{background:#e2f4e9;color:#17633b}.tag.failed,.tag.rejected{background:#fae5e5;color:#8a2929}.tag.review{background:#fff1d9;color:#81560c}
+.sectionhead{display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px}.sectionhead h2{font-size:17px;margin:0}
+.empty{padding:24px;text-align:center;color:#818797;background:#fff;border:1px dashed #d6d9e2;border-radius:12px;font-size:13px}
+.note{background:#fff8e9;border:1px solid #f1dfb9;padding:10px 12px;border-radius:9px;font-size:12px;color:#72551c;line-height:1.5}
+#message{position:fixed;bottom:18px;right:18px;background:#24213f;color:#fff;padding:12px 16px;border-radius:10px;max-width:360px;display:none;z-index:10;font-size:13px}
+.control-group{border:1px solid #e3e5eb;border-radius:10px;padding:10px;min-width:0}
+.control-group h3{font-size:13px;margin:0 0 8px}
+.control{padding:6px 0;border-bottom:1px solid #f0f1f4}.control:last-child{border:0}
+.control label{margin:0 0 4px;font-size:11px}.control input[type=range]{padding:0;border:0}.control .value{font-size:11px;color:#555;min-width:42px;text-align:right}
+.metric-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px;display:block;overflow-x:auto}
+.metric-table th,.metric-table td{border-bottom:1px solid #eee;padding:5px;text-align:right;white-space:nowrap}
+.metric-table th:first-child,.metric-table td:first-child{text-align:left}
+@media(max-width:900px){#mappingControls{grid-template-columns:1fr!important}}
+
+@media(max-width:850px){.columns{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.asset{grid-template-columns:1fr}.asset img{width:100%;height:170px}.grid{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div><h1>ChromaBook Studio</h1><p>Image processing · Review & approval · Versioned library · Book production</p></div><div class="row" style="max-width:320px"><input id="token" type="password" placeholder="Admin token (if enabled)" aria-label="Admin token"><button class="secondary" onclick="saveToken()">Save</button></div></header>
+<div class="wrap">
+ <div class="note">Palette is locked to the existing 21 colours. This server workspace stores original uploads, processing runs, approvals, revisions and book outputs. Configure an admin token before exposing it to a network.</div>
+ <div class="grid" style="margin-top:14px">
+  <div class="stat"><b id="sProjects">—</b><span>Projects</span></div><div class="stat"><b id="sAssets">—</b><span>Assets / versions</span></div><div class="stat"><b id="sReview">—</b><span>Awaiting review</span></div><div class="stat"><b id="sBooks">—</b><span>Books</span></div>
+ </div>
+ <div class="columns">
+  <aside class="panel">
+   <h2>Project workspace</h2>
+   <label>Active project</label><select id="projectSelect" onchange="refreshAll()"><option value="">Create or select a project</option></select>
+   <label>New project name</label><input id="projectName" placeholder="e.g. Spring collection">
+   <label>Description</label><textarea id="projectDescription" placeholder="Optional notes"></textarea>
+   <div class="actions"><button onclick="createProject()">Create project</button></div>
+   <hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+   <h2>Upload artwork</h2>
+   <label>Image file</label><input id="uploadFile" type="file" accept=".png,.jpg,.jpeg,.webp,image/*">
+   <label>Artwork name (version grouping)</label><input id="logicalName" placeholder="e.g. Purple cat">
+   <div class="actions"><button onclick="uploadAsset()">Upload image</button></div>
+   <p class="muted">PNG, JPG or WEBP · maximum 25 MB per image. Re-uploading the same artwork name creates a new version.</p>
+   <hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+   <h2>Build a book</h2>
+   <label>Book title</label><input id="bookTitle" placeholder="Book title">
+   <label>Subtitle</label><input id="bookSubtitle" placeholder="A Color-by-Number Collection">
+   <p class="muted">Select approved artworks in the library, then create the book. Output is a numbered PDF, a separate answer key and a preflight report.</p>
+   <div class="actions"><button onclick="buildBook()">Build from selected approved images</button></div>
+  </aside>
+  <main>
+   <div class="panel" style="margin-bottom:16px">
+    <div class="sectionhead" style="margin-top:0"><h2>Hybrid Mapping Controls</h2><span class="tag">Notebook v2 · 21 colours locked</span></div>
+    <p class="muted">Automatic processing uses the exact Notebook v2 defaults. Select an artwork, adjust only the original Notebook parameters, and rerun from the untouched source image. Each run and its configuration is retained.</p>
+    <div class="row">
+     <div><label>Artwork to tune</label><select id="tuneAsset" onchange="loadTuneParams()"><option value="">Select artwork</option></select></div>
+     <div><label>Engine used for selected output / book</label><select id="tuneEngine" onchange="mappingDirty=true"><option value="D">D — SLIC Region-Aware ICM</option><option value="C">C — Edge-Aware ICM</option><option value="B">B — Cell-wise CIEDE2000</option><option value="A">A — Legacy Mean-Lab / ΔE76</option></select></div>
+    </div>
+    <div id="mappingControls" class="columns" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:10px;gap:10px">
+      <div class="empty">Loading Notebook v2 parameter controls…</div>
+    </div>
+    <label style="margin-top:10px"><input type="checkbox" id="runStability" onchange="mappingDirty=true" style="width:auto;margin-right:6px">Run optional stability test ±1 L* (engines B, C, D)</label>
+    <div class="actions">
+     <button onclick="runHybrid()">Reprocess with current settings</button>
+     <button class="secondary" onclick="resetHybrid()">Reset to Notebook defaults</button>
+     <button class="secondary" onclick="exportHybridConfig()">Export Config JSON</button>
+    </div>
+    <p class="muted">Changing settings never overwrites the original upload or previous processing runs. A new run is saved as a separate version of the processing result.</p>
+   </div>
+   <div class="sectionhead"><h2>Artwork library</h2><button class="secondary" onclick="refreshAll()">Refresh</button></div>
+   <div id="assets" class="list"><div class="empty">Select or create a project to begin.</div></div>
+   <div class="sectionhead"><h2>Books & exports</h2></div>
+   <div id="books" class="list"><div class="empty">No books yet.</div></div>
+   <div class="sectionhead"><h2>Recent activity</h2></div>
+   <div id="audit" class="panel muted">No activity loaded.</div>
+  </main>
+ </div>
+</div>
+<div id="message"></div>
+<script>
+let projects=[], assets=[], mappingMeta=null, currentMappingParams=null, mappingDirty=false, pendingRunId=null;
+function token(){return document.getElementById('token').value || localStorage.getItem('chromabook_token') || ''}
+function saveToken(){localStorage.setItem('chromabook_token',document.getElementById('token').value);notify('Admin token saved in this browser.');refreshAll()}
+async function api(url,opts={}){opts.headers=opts.headers||{};if(token())opts.headers.Authorization='Bearer '+token();let r=await fetch(url,opts);let data;try{data=await r.json()}catch{data=await r.text()}if(!r.ok)throw new Error(data.detail||data.message||r.statusText);return data}
+function notify(s){let el=document.getElementById('message');el.textContent=s;el.style.display='block';setTimeout(()=>el.style.display='none',4500)}
+async function protectedBlob(url){let h={};if(token())h.Authorization='Bearer '+token();let r=await fetch(url,{headers:h});if(!r.ok)throw new Error('Could not fetch file ('+r.status+'). Check the admin token.');return await r.blob()}
+async function loadProtectedImages(){for(const img of document.querySelectorAll('img[data-protected-url]')){try{let b=await protectedBlob(img.dataset.protectedUrl);img.src=URL.createObjectURL(b)}catch(e){img.alt='Preview unavailable';}}}
+async function downloadFile(url){try{let b=await protectedBlob(url);let a=document.createElement('a');let obj=URL.createObjectURL(b);a.href=obj;let name=url.split('/').pop();if(name==='book')name='book.pdf';if(name==='answer-key')name='answer-key.pdf';if(name==='report')name='book_report.json';a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(obj)}catch(e){notify(e.message)}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function active(){return document.getElementById('projectSelect').value}
+
+async function loadMappingMeta(){mappingMeta=await api('/api/mapping/defaults');renderMappingControls(mappingMeta.defaults)}
+function renderMappingControls(values){
+ if(!mappingMeta)return;
+ currentMappingParams={...mappingMeta.defaults,...(values||{})};
+ const groups=['Preprocess','Edges','Mapping'];
+ const root=document.getElementById('mappingControls');
+ root.innerHTML=groups.map(group=>{
+  const fields=mappingMeta.controls.filter(x=>x.group===group);
+  return `<section class="control-group"><h3>${group}</h3>${fields.map(f=>{
+   const v=currentMappingParams[f.key];
+   if(f.kind==='bool')return `<div class="control"><label><input type="checkbox" data-param="${f.key}" onchange="mappingDirty=true" ${v?'checked':''} style="width:auto;margin-right:6px">${esc(f.label)}</label></div>`;
+   if(f.kind==='select')return `<div class="control"><label>${esc(f.label)}</label><select data-param="${f.key}" onchange="mappingDirty=true"><option value="none" ${v==='none'?'selected':''}>None</option><option value="bilateral" ${v==='bilateral'?'selected':''}>Bilateral</option><option value="nlm" ${v==='nlm'?'selected':''}>Non-local Means</option><option value="median" ${v==='median'?'selected':''}>Median</option></select></div>`;
+   const rangeStep=f.step;
+   const rangeValue=f.min+Math.round((Number(v)-f.min)/rangeStep)*rangeStep;
+   return `<div class="control"><label>${esc(f.label)}</label><div class="row"><input type="range" data-range="${f.key}" min="${f.min}" max="${f.max}" step="${rangeStep}" value="${rangeValue}" oninput="syncMappingValue('${f.key}',this.value)"><input type="number" data-param="${f.key}" min="${f.min}" max="${f.max}" step="1" value="${v}" style="max-width:82px" onchange="syncMappingValue('${f.key}',this.value)"></div></div>`;
+  }).join('')}</section>`;
+ }).join('');
+}
+function syncMappingValue(key,value){
+ mappingDirty=true;
+ const f=mappingMeta.controls.find(x=>x.key===key);
+ let v=Number(value);if(!Number.isFinite(v))return;
+ v=Math.min(f.max,Math.max(f.min,v));
+ const n=document.querySelector(`[data-param="${key}"]`),r=document.querySelector(`[data-range="${key}"]`);
+ if(n)n.value=v;if(r)r.value=v;
+ currentMappingParams[key]=Number.isInteger(mappingMeta.defaults[key])?Math.round(v):v;
+}
+function readMappingParams(){
+ const out={};
+ for(const f of mappingMeta.controls){
+  const el=document.querySelector(`[data-param="${f.key}"]`);
+  if(f.kind==='bool')out[f.key]=el.checked;
+  else if(f.kind==='select')out[f.key]=el.value;
+  else out[f.key]=Number(el.value);
+ }
+ return out;
+}
+function selectForTuning(id){
+ document.getElementById('tuneAsset').value=id;
+ loadTuneParams();
+ document.getElementById('tuneAsset').closest('.panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function loadTuneParams(){
+ mappingDirty=false;
+ const id=document.getElementById('tuneAsset').value;
+ const a=assets.find(x=>x.id===id);
+ const cfg=a?.latest_run?.params||{};
+ const vals=cfg.params||mappingMeta?.defaults||{};
+ renderMappingControls(vals);
+ if(cfg.selected_engine)document.getElementById('tuneEngine').value=cfg.selected_engine;
+ document.getElementById('runStability').checked=!!cfg.run_stability;
+}
+function resetHybrid(){renderMappingControls(mappingMeta.defaults);document.getElementById('tuneEngine').value='D';document.getElementById('runStability').checked=false;mappingDirty=true;}
+async function runHybrid(){
+ const id=document.getElementById('tuneAsset').value;
+ if(!id)return notify('Select an artwork to tune.');
+ try{
+  const body={params:readMappingParams(),selected_engine:document.getElementById('tuneEngine').value,
+              run_stability:document.getElementById('runStability').checked};
+  const r=await api(`/api/assets/${id}/process`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  pendingRunId=r.run_id;mappingDirty=true;
+  notify('Hybrid reprocessing queued. Previous run and source are retained.');
+  setTimeout(refreshAll,1800);
+ }catch(e){notify(e.message)}
+}
+function exportHybridConfig(){
+ const payload={schema:mappingMeta.schema,params:readMappingParams(),selected_engine:document.getElementById('tuneEngine').value,
+                palette:{id:'main-21',colors:21,editable:false}};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='chromabook-mapping-config.json';a.click();URL.revokeObjectURL(url);
+}
+
+function runHistoryHtml(asset){
+ const runs=asset.run_history||[];
+ if(runs.length<2)return '';
+ return `<details style="margin-top:8px"><summary class="muted">Processing history (${runs.length} runs)</summary>${runs.map((r,i)=>{
+  const cfg=r.params||{},p=cfg.params||{};
+  const base=r.preview_base_url;
+  return `<div style="border-top:1px solid #eee;padding:8px 0"><div class="muted">Run ${runs.length-i} · ${esc(r.state)} · Engine ${esc(r.engine||'—')} · Grid ${p.grid_cols??'—'} columns · ${new Date(r.created_at).toLocaleString()}</div>${base?`<div class="actions">${['A','B','C','D'].map(k=>`<button class="secondary" onclick="downloadFile('${base}engine_${k}/numbered_preview.png')">${k} Grid</button>`).join('')}</div>`:''}${r.metrics?metricsTable(r.metrics):''}${r.stability?`<div class="muted">±1 L* stability: ${r.stability.map(x=>`${esc(x.Engine)} ${Number(x['Mean stability %']).toFixed(1)}%`).join(' · ')}</div>`:''}</div>`;
+ }).join('')}</details>`;
+}
+function metricsTable(metrics){
+ if(!metrics?.engines)return '';
+ const keys=['A','B','C','D'];
+ const fmt=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
+ let base=`<div style="overflow-x:auto"><table class="metric-table"><thead><tr><th>Engine</th><th>ΔE00 mean</th><th>SSIM</th><th>Edge F1</th><th>Singleton %</th><th>Tiny %</th><th>Transition %</th><th>Colors</th></tr></thead><tbody>${keys.map(k=>{let m=metrics.engines[k]||{};return `<tr><td>${k}</td><td>${fmt(m.DeltaE00_mean_vs_source)}</td><td>${fmt(m.SSIM_vs_source,3)}</td><td>${fmt(m.Edge_F1_1px,3)}</td><td>${fmt(m.singleton_ratio_pct)}</td><td>${fmt(m.tiny_component_ratio_pct)}</td><td>${fmt(m.transition_rate_pct)}</td><td>${m.colors_used??'—'}</td></tr>`}).join('')}</tbody></table></div>`;
+ return base;
+}
+
+async function refreshAll(){try{projects=await api('/api/projects');let sel=document.getElementById('projectSelect'),old=sel.value;sel.innerHTML='<option value="">Select a project</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(projects.some(p=>p.id===old))sel.value=old;await Promise.all([refreshAssets(),refreshBooks(),refreshStats(),refreshAudit()])}catch(e){notify(e.message)}}
+async function createProject(){let name=document.getElementById('projectName').value.trim();if(!name)return notify('Enter a project name.');try{let p=await api('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:document.getElementById('projectDescription').value})});document.getElementById('projectName').value='';await refreshAll();document.getElementById('projectSelect').value=p.id;await refreshAll();notify('Project created.')}catch(e){notify(e.message)}}
+async function uploadAsset(){let pid=active(),f=document.getElementById('uploadFile').files[0];if(!pid)return notify('Select a project first.');if(!f)return notify('Choose an image.');let fd=new FormData();fd.append('file',f);fd.append('logical_name',document.getElementById('logicalName').value);try{await api(`/api/projects/${pid}/assets`,{method:'POST',body:fd});document.getElementById('uploadFile').value='';document.getElementById('logicalName').value='';await refreshAssets();await refreshStats();notify('Image uploaded and versioned.')}catch(e){notify(e.message)}}
+async function refreshAssets(){let pid=active();if(!pid){document.getElementById('assets').innerHTML='<div class="empty">Select or create a project to view its library.</div>';assets=[];return}assets=await api('/api/assets?project_id='+encodeURIComponent(pid));document.getElementById('assets').innerHTML=assets.length?assets.map(a=>{let run=a.latest_run;let preview=a.preview_url?`<img data-protected-url="${a.preview_url}" alt="Preview">`:`<div class="empty">No preview</div>`;return `<article class="asset">${preview}<div><h3>${esc(a.logical_name)} <span class="muted">v${a.version}</span></h3><span class="tag ${esc(a.status)}">${esc(a.status)}</span>${run?`<span class="tag">${esc(run.state)}</span><span class="tag">${esc(run.confidence||'')}</span>`:''}<p class="muted">${esc(a.filename)} · ${a.sha256.slice(0,12)}</p><label class="row" style="font-weight:400"><input type="checkbox" class="pick" value="${a.id}" ${a.status==='approved'?'':'disabled'} style="width:auto"> Include in book</label><div class="actions">${a.status==='uploaded'||a.status==='failed'||a.status==='interrupted'?`<button onclick="processAsset('${a.id}')">Process</button>`:''}${a.status==='review'?`<button onclick="review('${a.id}','approve')">Approve</button><button class="danger" onclick="review('${a.id}','reject')">Reject</button>`:''}<button class="secondary" onclick="revise('${a.id}')">Upload revision</button><button class="secondary" onclick="selectForTuning('${a.id}')">Hybrid tune</button>${run&&run.state==='completed'?`<button class="secondary" onclick="downloadFile('/api/assets/${a.id}/preview/numbered_preview.png')">Numbered preview</button>${['A','B','C','D'].map(k=>`<button class="secondary" onclick="downloadFile('/api/assets/${a.id}/preview/engine_${k}/color_preview.png')">${k} Pixel</button><button class="secondary" onclick="downloadFile('/api/assets/${a.id}/preview/engine_${k}/numbered_preview.png')">${k} Grid</button>`).join('')}`:''}</div>${run?.metrics?metricsTable(run.metrics):''}${run?.stability?`<div class="muted" style="margin-top:6px">±1 L* stability: ${run.stability.map(x=>`${esc(x.Engine)} ${Number(x['Mean stability %']).toFixed(1)}%`).join(' · ')}</div>`:''}${runHistoryHtml(a)}</div></article>`}).join(''):'<div class="empty">No artwork uploaded to this project yet.</div>';await loadProtectedImages();
+ let ts=document.getElementById('tuneAsset'),old=ts.value;ts.innerHTML='<option value="">Select artwork</option>'+assets.map(a=>`<option value="${a.id}">${esc(a.logical_name)} · v${a.version}</option>`).join('');
+ if(assets.some(a=>a.id===old))ts.value=old;else if(assets.length)ts.value=assets[0].id;
+ const tuned=assets.find(a=>a.id===ts.value);
+ if(pendingRunId && tuned?.latest_run?.id===pendingRunId){pendingRunId=null;mappingDirty=false;}
+ if(ts.value && !mappingDirty)loadTuneParams()}
+async function processAsset(id){try{await api(`/api/assets/${id}/process`,{method:'POST'});notify('Processing queued. Refresh in a moment to see its status.');setTimeout(refreshAll,1500)}catch(e){notify(e.message)}}
+async function review(id,action){let note=prompt(action==='approve'?'Optional approval note:':'Reason for rejection:','')||'';try{await api(`/api/assets/${id}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,note})});await refreshAll();notify('Review saved.')}catch(e){notify(e.message)}}
+async function revise(id){let f=document.createElement('input');f.type='file';f.accept='.png,.jpg,.jpeg,.webp';f.onchange=async()=>{if(!f.files[0])return;let fd=new FormData();fd.append('file',f.files[0]);try{await api(`/api/assets/${id}/revisions`,{method:'POST',body:fd});await refreshAll();notify('New revision uploaded; previous version retained.')}catch(e){notify(e.message)}};f.click()}
+async function buildBook(){let pid=active(),ids=[...document.querySelectorAll('.pick:checked')].map(x=>x.value);if(!pid)return notify('Select a project.');if(!ids.length)return notify('Select at least one approved image.');let title=document.getElementById('bookTitle').value.trim();if(!title)return notify('Enter a book title.');try{await api('/api/books',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:pid,asset_ids:ids,title,subtitle:document.getElementById('bookSubtitle').value})});notify('Book build queued.');setTimeout(refreshAll,2000)}catch(e){notify(e.message)}}
+async function refreshBooks(){let pid=active();if(!pid){document.getElementById('books').innerHTML='<div class="empty">Select a project.</div>';return}let bs=await api('/api/books?project_id='+encodeURIComponent(pid));document.getElementById('books').innerHTML=bs.length?bs.map(b=>`<article class="book"><h3>${esc(b.title)}</h3><span class="tag ${esc(b.status)}">${esc(b.status)}</span><p class="muted">${esc(b.subtitle)}</p>${b.error?`<p class="muted">${esc(b.error)}</p>`:''}<div class="actions">${b.book_url?`<button onclick="downloadFile('${b.book_url}')">Book PDF</button><button class="secondary" onclick="downloadFile('${b.answer_key_url}')">Answer key</button><button class="secondary" onclick="downloadFile('${b.report_url}')">Preflight report</button>`:''}</div></article>`).join(''):'<div class="empty">No books have been built for this project.</div>'}
+async function refreshStats(){let d=await api('/api/dashboard');document.getElementById('sProjects').textContent=d.projects;document.getElementById('sAssets').textContent=d.assets;document.getElementById('sReview').textContent=d.needs_review;document.getElementById('sBooks').textContent=d.books}
+async function refreshAudit(){let rows=await api('/api/audit?limit=12');document.getElementById('audit').innerHTML=rows.length?rows.map(x=>`<div style="padding:6px 0;border-bottom:1px solid #eee">${esc(x.action)} · ${esc(x.entity_type)} · ${esc(x.detail)} <span style="float:right">${new Date(x.created_at).toLocaleString()}</span></div>`).join(''):'No activity yet.'}
+document.getElementById('token').value=localStorage.getItem('chromabook_token')||'';loadMappingMeta().then(refreshAll).catch(e=>notify(e.message));setInterval(()=>{if(active())refreshAll()},10000);
+</script>
+</body></html>

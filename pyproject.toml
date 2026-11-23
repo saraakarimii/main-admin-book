@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chromabook-engine"
+version = "0.7.0"
+description = "ChromaBook Studio - image processing, book production and self-hosted management platform"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24", "scipy>=1.10", "opencv-python-headless>=4.8",
+  "scikit-image>=0.21", "Pillow>=10.0", "pandas>=2.0", "reportlab>=4.0", "pypdf>=4.0", "fastapi>=0.110", "uvicorn[standard]>=0.27", "sqlalchemy>=2.0", "python-multipart>=0.0.9", "psycopg[binary]>=3.1", "alembic>=1.13",
+]
+[project.optional-dependencies]
+fast = ["numba>=0.58"]
+dev = ["pytest>=7", "pypdf>=4.0"]
+[project.scripts]
+chromabook = "chromabook_engine.cli:main"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
